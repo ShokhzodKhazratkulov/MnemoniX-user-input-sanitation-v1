@@ -1,12 +1,11 @@
 {
-  "name": "mnemonix-app",
+  "name": "mnemonix:-master-vocabulary-with-mnemonics",
   "private": true,
-  "version": "1.0.0",
+  "version": "0.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "start": "node server.js",
     "preview": "vite preview",
     "lint": "tsc --noEmit"
   },
@@ -14,7 +13,6 @@
     "@google/genai": "^1.41.0",
     "@supabase/supabase-js": "^2.98.0",
     "browser-image-compression": "^2.0.2",
-    "express": "^5.2.1",
     "jspdf": "^4.2.1",
     "jspdf-autotable": "^5.0.7",
     "lucide-react": "^0.575.0",

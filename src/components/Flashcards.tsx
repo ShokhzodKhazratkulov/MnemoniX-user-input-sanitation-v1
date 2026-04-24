@@ -9,6 +9,7 @@ import { GeminiService } from '../services/geminiService';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { MNEMONIX_LOGO_BASE64 } from '../../logos';
+import { NOTO_SANS_REGULAR_BASE64 } from '../utils/pdfFonts';
 
 const gemini = new GeminiService();
 
@@ -231,7 +232,7 @@ export const Flashcards = React.memo(({
 
   const normalizeText = useCallback((text: string) => {
     if (!text) return "";
-    // Replace non-ASCII characters that cause garbage in jsPDF with standard fonts
+    // Replace only specific problematic punctuation characters, NOT characters from other languages
     return text
       .replace(/ʻ/g, "'")
       .replace(/ʼ/g, "'")
@@ -240,26 +241,22 @@ export const Flashcards = React.memo(({
       .replace(/“/g, '"')
       .replace(/”/g, '"')
       .replace(/–/g, "-")
-      .replace(/—/g, "-")
-      .replace(/[^\x00-\x7F]/g, (char) => {
-        // Map common accented characters to ASCII
-        const accents: Record<string, string> = {
-          'à': 'a', 'á': 'a', 'â': 'a', 'ã': 'a', 'ä': 'a', 'å': 'a',
-          'è': 'e', 'é': 'e', 'ê': 'e', 'ë': 'e',
-          'ì': 'i', 'í': 'i', 'î': 'i', 'ï': 'i',
-          'ò': 'o', 'ó': 'o', 'ô': 'o', 'õ': 'o', 'ö': 'o',
-          'ù': 'u', 'ú': 'u', 'û': 'u', 'ü': 'u',
-          'ñ': 'n', 'ç': 'c', 'À': 'A', 'Á': 'A', 'Â': 'A', 'Ã': 'A', 'Ä': 'A', 'Å': 'A',
-          'È': 'E', 'É': 'E', 'Ê': 'E', 'Ë': 'E', 'Ì': 'I', 'Í': 'I', 'Î': 'I', 'Ï': 'I',
-          'Ò': 'O', 'Ó': 'O', 'Ô': 'O', 'Õ': 'O', 'Ö': 'O', 'Ù': 'U', 'Ú': 'U', 'Û': 'U', 'Ü': 'U',
-          'Ñ': 'N', 'Ç': 'C'
-        };
-        return accents[char] || "?";
-      });
+      .replace(/—/g, "-");
   }, []);
 
   const handleDownloadPDF = useCallback(() => {
+    // Standard jsPDF constructor
     const doc = new jsPDF();
+    
+    // 1. Register Unicode Font (Noto Sans)
+    // Filename must end in .ttf for jsPDF to recognize it as a TrueType font
+    const fontName = "NotoSans-Regular";
+    doc.addFileToVFS(`${fontName}.ttf`, NOTO_SANS_REGULAR_BASE64);
+    doc.addFont(`${fontName}.ttf`, fontName, "normal");
+    
+    // 2. Set default font for document content
+    doc.setFont(fontName);
+
     const { groups, sortedDates } = groupWordsByDate(filtered);
 
     // Draw Logo (Indigo square with white M) - Manual drawing as requested
@@ -267,7 +264,7 @@ export const Flashcards = React.memo(({
     doc.roundedRect(20, 12, 15, 15, 4, 4, 'F');
     doc.setTextColor(255, 255, 255);
     doc.setFontSize(18);
-    doc.setFont("helvetica", "bold");
+    doc.setFont(fontName, "bold");
     doc.text("M", 27.5, 22.5, { align: "center" });
 
     // Add Title
@@ -287,7 +284,7 @@ export const Flashcards = React.memo(({
       }
 
       doc.setFontSize(16);
-      doc.setFont("helvetica", "bold");
+      doc.setFont(fontName, "bold");
       doc.setTextColor(0, 0, 0);
       doc.text(date, 20, yPos);
       yPos += 5;
@@ -309,7 +306,7 @@ export const Flashcards = React.memo(({
         styles: {
           fontSize: 12,
           cellPadding: 5,
-          font: 'helvetica',
+          font: fontName, // Crucial: use the Unicode font for table rows
           textColor: [30, 30, 30],
         },
         headStyles: {
@@ -317,6 +314,7 @@ export const Flashcards = React.memo(({
           textColor: [255, 255, 255],
           fontSize: 13,
           fontStyle: 'bold',
+          font: fontName, // Use Unicode font for header too
         },
         columnStyles: {
           0: { cellWidth: 15, halign: 'center' },
@@ -332,7 +330,7 @@ export const Flashcards = React.memo(({
     const startStr = dateFrom || 'start';
     const endStr = dateTo || 'end';
     doc.save(`words-${startStr}-${endStr}.pdf`);
-  }, [filtered, t, dateFrom, dateTo, normalizeText]);
+  }, [filtered, fullT, dateFrom, dateTo, normalizeText]);
 
   // Reset flip state when moving to a new card
   useEffect(() => {
